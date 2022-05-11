@@ -104,14 +104,20 @@ public abstract class BuilderRequiredProperties {
     final Class<?> type;
     final String name;
     /**
+     * The source representation of the value this field has when all properties have been given a
+     * value.
+     */
+    final String allSetBitmask;
+    /**
      * The source representation of the value this field has when all required properties have been
      * given a value.
      */
     final String allRequiredBitmask;
 
-    BitmaskField(Class<?> type, String name, String allRequiredBitmask) {
+    BitmaskField(Class<?> type, String name, String allSetBitmask, String allRequiredBitmask) {
       this.type = type;
       this.name = name;
+      this.allSetBitmask = allSetBitmask;
       this.allRequiredBitmask = allRequiredBitmask;
     }
   }
@@ -140,11 +146,13 @@ public abstract class BuilderRequiredProperties {
                 i -> {
                   int bitBase = i * 32;
                   int remainingBits = trackedCount - bitBase;
+                  int allOnes = (remainingBits >= 32) ? ~0 : (1 << remainingBits) - 1;
                   Class<?> type = classForBits(remainingBits);
                   String name = "set$" + i;
+                  String allSetBitmask = hex(allOnes);
                   String allRequiredBitmask =
                       allRequiredBitmask(trackedProperties, bitBase, remainingBits);
-                  return new BitmaskField(type, name, allRequiredBitmask);
+                  return new BitmaskField(type, name, allSetBitmask, allRequiredBitmask);
                 })
             .collect(toImmutableList());
   }
@@ -173,7 +181,7 @@ public abstract class BuilderRequiredProperties {
    */
   public ImmutableList<String> getInitToAllSet() {
     return bitmaskFields.stream()
-        .map(field -> field.name + " = " + cast(field.type, field.allRequiredBitmask) + ";")
+        .map(field -> field.name + " = " + cast(field.type, field.allSetBitmask) + ";")
         .collect(toImmutableList());
   }
 
